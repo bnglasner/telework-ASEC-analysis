@@ -11,6 +11,7 @@ library(readxl)
 library(readr)
 library(ipumsr)
 library(janitor)
+library(ggplot2)
 
 #################
 ### Set paths ###
@@ -51,7 +52,7 @@ cps_monthly_files <- cps_monthly_files %>%
   clean_names()  %>%
   select(serial, pernum, year, month, hrhhid ,hrhhid2, pulineno )
 
-ddi <- read_ipums_ddi("cps_00025.xml")
+ddi <- read_ipums_ddi("cps_00026.xml")
 data <- read_ipums_micro(ddi)
 data <- data %>% 
   clean_names() %>% 
@@ -67,22 +68,10 @@ data <- data %>%
 merged_data <- inner_join(cps_monthly_files, data) # merge ipums with census using hhrid hrhhid2 and pulineno (lineno)
 merged_data <- inner_join(merged_data, telework_microdata_CPS) # merge census to telework using year month serial pernum
 
-#########################
-### Describe the data ###
-#########################
-
-table(merged_data$year, merged_data$month) # confirm that everything is March, 2023
-
-merged_data %>%
-  group_by(year, month) %>%
-  summarise(workers = sum(earnwt),
-            workers_diffany = sum(earnwt[diffany == 2])/workers,
-            workers_diffcare = sum(earnwt[diffcare == 2])/workers,
-            workers_diffhear = sum(earnwt[diffhear == 2])/workers,
-            workers_diffeye = sum(earnwt[diffeye == 2])/workers,
-            workers_diffrem = sum(earnwt[diffrem == 2])/workers,
-            workers_diffphys = sum(earnwt[diffphys == 2])/workers,
-            workers_diffmob = sum(earnwt[diffmob == 2])/workers
-  )
 
 
+##################
+### Save Data  ###
+##################
+save(merged_data, file = "CPS_telework.RData")
+write.csv(merged_data, file = "CPS_telework.csv", row.names = FALSE)
