@@ -9,6 +9,7 @@
 library(dplyr)
 library(readxl)
 library(readr)
+library(ipumsr)
 
 #################
 ### Set paths ###
@@ -43,3 +44,7 @@ setwd(path_data)
 
 telework_microdata_CPS <- read_csv("telework_microdata_CPS.csv")
 cps_monthly_files <- read_csv("cps_monthly_files.csv")
+
+ddi <- read_ipums_ddi("cps_00024.xml")
+data <- read_ipums_micro(ddi)
+
