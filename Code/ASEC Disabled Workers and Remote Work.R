@@ -8,10 +8,9 @@
 
 library(dplyr)
 library(readxl)
-library(readr)
-library(ipumsr)
-library(janitor)
 library(ggplot2)
+library(fixest)
+# https://cran.r-project.org/web/packages/fixest/vignettes/fixest_walkthrough.html#13_Other_standard-errors
 
 #################
 ### Set paths ###
@@ -83,6 +82,7 @@ merged_data %>%
   geom_point() + 
   ylab("Percent of the Respondent Workforce") +
   xlab("Date") + 
+  ggtitle("Workers with Disabilities") + 
   scale_y_continuous(limits = c(0,0.045),
                      labels = scales::percent_format()) + 
   theme_bw() +
@@ -93,12 +93,19 @@ merged_data %>%
 ### Regression         ###
 ##########################
 merged_data <- merged_data %>%
-  mutate(telework_factor = if_else(telework_any==1 & ahrsworkt>telework_hours,"Some Telework",
+  mutate(date = as.Date(paste0("1-",month,"-",year),tryFormats = c("%d-%m-%Y")),
+         telework_factor = if_else(telework_any==1 & ahrsworkt>telework_hours,"Some Telework",
                                    if_else(telework_any==1 & ahrsworkt==telework_hours,"All Telework", "No Telework")),
          fully_remote = as.integer(telework_factor == "All Telework"),
-         hybrid_remote = as.integer(telework_factor == "Some Telework"))
-fully_remote <- lm()
+         hybrid_remote = as.integer(telework_factor == "Some Telework"),
+         any_remote = as.integer(telework_any == 1),
+         diffany_bin = as.integer(diffany==2))
 
 
+fully_remote = feols(fully_remote ~ diffany_bin | occ + ind, subset(merged_data,earnwt>0))
+hybrid_remote = feols(hybrid_remote ~ diffany_bin | occ + ind, subset(merged_data,earnwt>0))
+any_remote = feols(any_remote ~ diffany_bin | occ + ind, subset(merged_data,earnwt>0))
 
 
+etable(fully_remote, hybrid_remote, any_remote,
+       vcov = "twoway", headers = c("Fully Remote", "Hybrid Remote", "Any Remote"))
