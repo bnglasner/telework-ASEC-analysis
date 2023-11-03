@@ -96,22 +96,134 @@ png(filename = "Share of disabled workforce and telework.png",width =  850, heig
 plot(P)
 dev.off()
  
-##########################
-### Regression         ###
-##########################
+###########################
+### Regression Analysis ###
+###########################
+
 merged_data <- merged_data %>%
   mutate(telework_factor = if_else(telework_any==1 & ahrsworkt>telework_hours,"Some Telework",
                                    if_else(telework_any==1 & ahrsworkt==telework_hours,"All Telework", "No Telework")),
          fully_remote = as.integer(telework_factor == "All Telework"),
          hybrid_remote = as.integer(telework_factor == "Some Telework"),
          any_remote = as.integer(telework_any == 1),
-         diffany_bin = as.integer(diffany==2))
+         diffany_bin = as.integer(diffany==2)) %>%
+  filter(wtfinl > 0)
 
 
-fully_remote = feols(fully_remote ~ diffany_bin | occ + ind, subset(merged_data,wtfinl>0), weights = merged_data$wtfinl[merged_data$wtfinl>0])
-hybrid_remote = feols(hybrid_remote ~ diffany_bin | occ + ind, subset(merged_data,wtfinl>0), weights = merged_data$wtfinl[merged_data$wtfinl>0])
-any_remote = feols(any_remote ~ diffany_bin | occ + ind, subset(merged_data,wtfinl>0), weights = merged_data$wtfinl[merged_data$wtfinl>0])
+# Convert difficulty variables to binary format within the merged_data dataset
+binary_difficulty_vars <- c("diffhear", "diffeye", "diffrem", "diffphys", "diffmob", "diffcare", "diffany")
+for (var in binary_difficulty_vars) {
+  merged_data[[paste0(var, "_bin")]] <- as.integer(merged_data[[var]] == 2)
+}
+
+# Define the weights object for the feols
+wtfinl <- merged_data$wtfinl
+
+# Define a custom function to run feols with given dependent variable
+baseline_feols <- function(dependent_variable, independent_variable_bin) {
+  feols(as.formula(paste(dependent_variable, "~", independent_variable_bin, "| occ + ind")), 
+        data = merged_data,
+        weights = wtfinl[wtfinl > 0])
+}
+
+ind_info_feols <- function(dependent_variable, independent_variable_bin) {
+  feols(as.formula(paste(dependent_variable, "~", independent_variable_bin, "| occ + ind + race + marst + citizen")), 
+        data = merged_data,
+        weights = wtfinl[wtfinl > 0])
+}
+
+# Initialize lists to store models
+any_baseline_models <- list()
+any_indinfo_models <- list()
+fully_baseline_models <- list()
+fully_indinfo_models <- list()
+hybrid_baseline_models <- list()
+hybrid_indinfo_models <- list()
+
+# Loop through each binary difficulty variable and run regressions
+for (diff_var in binary_difficulty_vars) {
+  independent_var_bin <- paste0(diff_var, "_bin")
+  any_baseline_models[[diff_var]] <- baseline_feols("any_remote", independent_var_bin)
+  any_indinfo_models[[diff_var]] <- ind_info_feols("any_remote", independent_var_bin)
+  
+  fully_baseline_models[[diff_var]] <- baseline_feols("fully_remote", independent_var_bin)
+  fully_indinfo_models[[diff_var]] <- ind_info_feols("fully_remote", independent_var_bin)
+  
+  hybrid_baseline_models[[diff_var]] <- baseline_feols("hybrid_remote", independent_var_bin)
+  hybrid_indinfo_models[[diff_var]] <- ind_info_feols("hybrid_remote", independent_var_bin)
+}
+
+# Use etable to display results from the first variable as an example
+etable(any_baseline_models[[binary_difficulty_vars[1]]], any_indinfo_models[[binary_difficulty_vars[1]]],
+       fully_baseline_models[[binary_difficulty_vars[1]]], fully_indinfo_models[[binary_difficulty_vars[1]]],
+       hybrid_baseline_models[[binary_difficulty_vars[1]]], hybrid_indinfo_models[[binary_difficulty_vars[1]]],
+       vcov = "twoway", 
+       headers = c("Any - Baseline","Any - Extended",
+                   "Fully - Baseline","Fully - Extended",
+                   "Hybrid - Baseline","Hybrid - Extended" 
+                   ))
 
 
-etable(fully_remote, hybrid_remote, any_remote,
-       vcov = "twoway", headers = c("Fully Remote", "Hybrid Remote", "Any Remote"))
+###########################
+### Visual     Analysis ###
+###########################
+
+# Step 1: Extract Coefficients and Confidence Intervals
+outcome_list <- c("Deaf/Serious Diff. Hearing", "Blind /Serious Diff. Seeing", 
+                  "Cognitive Diff.", "Diff. Walking/Climbing Stairs", 
+                  "Diff./Impossible for Activities Outside the Home Alone", "Diff. to take Care for Pers. Needs", 
+                  "Any Difficulty")
+
+
+plot_data <- list()
+
+for(i in seq_along(any_baseline_models)){
+  plot_data[[i]] <- as.data.frame(c(bind_rows(any_baseline_models[[i]]$coeftable, any_indinfo_models[[i]]$coeftable,
+                              fully_baseline_models[[i]]$coeftable, fully_indinfo_models[[i]]$coeftable,
+                              hybrid_baseline_models[[i]]$coeftable, hybrid_indinfo_models[[i]]$coeftable)))
+  plot_data[[i]]$model <- c("Any - Baseline","Any - Extended",
+                            "Fully - Baseline","Fully - Extended",
+                            "Hybrid - Baseline","Hybrid - Extended" 
+  )
+  plot_data[[i]]$dependent <- c(outcome_list[[i]],outcome_list[[i]],outcome_list[[i]],
+                                outcome_list[[i]],outcome_list[[i]],outcome_list[[i]])
+  
+}
+
+all_results <- bind_rows(plot_data)
+
+all_results$dependent <- factor(all_results$dependent,
+                                levels = c("Deaf/Serious Diff. Hearing", "Blind /Serious Diff. Seeing", 
+                                           "Cognitive Diff.", "Diff. Walking/Climbing Stairs", 
+                                           "Diff./Impossible for Activities Outside the Home Alone", "Diff. to take Care for Pers. Needs", 
+                                           "Any Difficulty"))
+
+all_results <- all_results %>%
+  arrange(dependent,model) %>%
+  mutate(row_num = row_number(),
+         conf.low = Estimate - 1.96*Std..Error,
+         conf.high = Estimate + 1.96*Std..Error)
+
+# Step 2: Create the Plot
+P <- ggplot(all_results, 
+       aes(x = row_num, 
+           y = Estimate, 
+           ymin = conf.low, 
+           ymax = conf.high, 
+           color = dependent,
+           shape = model)) +
+  geom_hline(yintercept = 0) +
+  geom_pointrange() +
+  # facet_wrap(~ model_type, scales = "free_y") +
+  theme_minimal() +
+  labs(x = "Independent Variable",
+       y = "Coefficient Estimate",
+       color = "Dependent Variable",
+       shape = "Model Type",
+       title = "The effect of Disabilities on Propensity to Telework",
+       subtitle = "Coefficient Estimates with 95% Confidence Intervals") +
+  theme(axis.text.x = element_blank())
+
+png(filename = "Dis. Effect by Type.png", height =800, width = 1600)
+plot(P)
+dev.off()
