@@ -54,13 +54,13 @@ cps_monthly_files <- cps_monthly_files %>%
   na.omit() %>%
   mutate(hrhhid = as.character(as.numeric(hrhhid)))
 
-ddi <- read_ipums_ddi("cps_00027.xml")
+ddi <- read_ipums_ddi("cps_00028.xml")
 data <- read_ipums_micro(ddi)
 
 data <- data %>% 
   clean_names() %>%
-  # filter(asecflag == 2 | is.na(asecflag)) %>% 
-  filter(asecflag == 1) %>% 
+  filter(asecflag == 2 | is.na(asecflag)) %>%
+  # filter(asecflag == 1) %>% 
   select(-serial, -pernum) %>%
   mutate(hrhhid = as.character(hrhhid)) %>%
   rename(pulineno = lineno) 
@@ -79,8 +79,8 @@ merged_data <- inner_join(merged_data, telework_microdata_CPS) # merge ipums wit
 ##################
 ### Save Data  ###
 ##################
-# save(merged_data, file = "CPS_telework.RData")
-save(merged_data, file = "CPS_telework_ASEC.RData")
+save(merged_data, file = "CPS_telework.RData")
+# save(merged_data, file = "CPS_telework_ASEC.RData")
 
-# write.csv(merged_data, file = "CPS_telework.csv", row.names = FALSE)
-write.csv(merged_data, file = "CPS_telework_ASEC.csv", row.names = FALSE)
+write.csv(merged_data, file = "CPS_telework.csv", row.names = FALSE)
+# write.csv(merged_data, file = "CPS_telework_ASEC.csv", row.names = FALSE)
