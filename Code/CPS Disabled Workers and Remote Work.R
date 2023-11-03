@@ -108,7 +108,8 @@ merged_data <- merged_data %>%
          hybrid_remote = as.integer(telework_factor == "Some Telework"),
          any_remote = as.integer(telework_any == 1),
          diffany_bin = as.integer(diffany==2)) %>%
-  filter(wtfinl > 0)
+  filter(wtfinl > 0) %>%
+  filter(age>=22 & age<=64)
 
 
 # Convert difficulty variables to binary format within the merged_data dataset
@@ -128,7 +129,7 @@ baseline_feols <- function(dependent_variable, independent_variable_bin) {
 }
 
 ind_info_feols <- function(dependent_variable, independent_variable_bin) {
-  feols(as.formula(paste(dependent_variable, "~", independent_variable_bin, "| occ2010 + ind1990 + race + sex + marst + educ")), 
+  feols(as.formula(paste(dependent_variable, "~", independent_variable_bin, "| occ2010 + ind1990 + race + sex + marst + educ + nchild + age")), 
         data = merged_data,
         weights = wtfinl[wtfinl > 0])
 }
@@ -209,13 +210,13 @@ all_results$dependent <- factor(all_results$dependent,
                                            "Any Difficulty"))
 
 all_results <- all_results %>%
-  # filter(type != "Any") %>%
+  filter(type != "Any Remote") %>%
   arrange(dependent,model) %>%
   mutate(row_num = row_number(),
          conf.low = Estimate - 1.96*Std..Error,
          conf.high = Estimate + 1.96*Std..Error) 
 
-startpoints <- c(1,7,14,21,28,35,42)
+# startpoints <- c(1,7,14,21,28,35,42)
 midpoints <- tapply(all_results$row_num, all_results$dependent, 
                     function(x) mean(range(x)))
 ticktext <- unique(all_results$dependent)
@@ -252,8 +253,20 @@ P <- P %>%
         width = 2,
         dash = 'dash'
       ),
-      x0 = 6.5,
-      x1 = 6.5,
+      x0 = 4.5,
+      x1 = 4.5,
+      y0 = min(all_results$conf.low),  # Replace with the minimum y-value you want the line to start at
+      y1 = max(all_results$conf.high)  # Replace with the maximum y-value you want the line to end at
+    ),
+    list(
+      type = 'line',
+      line = list(
+        color = 'grey',
+        width = 2,
+        dash = 'dash'
+      ),
+      x0 = 8.5,
+      x1 = 8.5,
       y0 = min(all_results$conf.low),  # Replace with the minimum y-value you want the line to start at
       y1 = max(all_results$conf.high)  # Replace with the maximum y-value you want the line to end at
     ),
@@ -276,8 +289,20 @@ P <- P %>%
         width = 2,
         dash = 'dash'
       ),
-      x0 = 18.5,
-      x1 = 18.5,
+      x0 = 16.5,
+      x1 = 16.5,
+      y0 = min(all_results$conf.low),  # Replace with the minimum y-value you want the line to start at
+      y1 = max(all_results$conf.high)  # Replace with the maximum y-value you want the line to end at
+    ),
+    list(
+      type = 'line',
+      line = list(
+        color = 'grey',
+        width = 2,
+        dash = 'dash'
+      ),
+      x0 = 20.5,
+      x1 = 20.5,
       y0 = min(all_results$conf.low),  # Replace with the minimum y-value you want the line to start at
       y1 = max(all_results$conf.high)  # Replace with the maximum y-value you want the line to end at
     ),
@@ -290,30 +315,6 @@ P <- P %>%
       ),
       x0 = 24.5,
       x1 = 24.5,
-      y0 = min(all_results$conf.low),  # Replace with the minimum y-value you want the line to start at
-      y1 = max(all_results$conf.high)  # Replace with the maximum y-value you want the line to end at
-    ),
-    list(
-      type = 'line',
-      line = list(
-        color = 'grey',
-        width = 2,
-        dash = 'dash'
-      ),
-      x0 = 30.5,
-      x1 = 30.5,
-      y0 = min(all_results$conf.low),  # Replace with the minimum y-value you want the line to start at
-      y1 = max(all_results$conf.high)  # Replace with the maximum y-value you want the line to end at
-    ),
-    list(
-      type = 'line',
-      line = list(
-        color = 'grey',
-        width = 2,
-        dash = 'dash'
-      ),
-      x0 = 36.5,
-      x1 = 36.5,
       y0 = min(all_results$conf.low),  # Replace with the minimum y-value you want the line to start at
       y1 = max(all_results$conf.high)  # Replace with the maximum y-value you want the line to end at
     )
