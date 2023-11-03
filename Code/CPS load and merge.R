@@ -54,7 +54,7 @@ cps_monthly_files <- cps_monthly_files %>%
   na.omit() %>%
   mutate(hrhhid = as.character(as.numeric(hrhhid)))
 
-ddi <- read_ipums_ddi("cps_00026.xml")
+ddi <- read_ipums_ddi("cps_00027.xml")
 data <- read_ipums_micro(ddi)
 
 data <- data %>% 
