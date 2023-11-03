@@ -59,7 +59,8 @@ data <- read_ipums_micro(ddi)
 
 data <- data %>% 
   clean_names() %>%
-  filter(asecflag == 2 | is.na(asecflag)) %>% 
+  # filter(asecflag == 2 | is.na(asecflag)) %>% 
+  filter(asecflag == 1) %>% 
   select(-serial, -pernum) %>%
   mutate(hrhhid = as.character(hrhhid)) %>%
   rename(pulineno = lineno) 
@@ -78,5 +79,8 @@ merged_data <- inner_join(merged_data, telework_microdata_CPS) # merge ipums wit
 ##################
 ### Save Data  ###
 ##################
-save(merged_data, file = "CPS_telework.RData")
-write.csv(merged_data, file = "CPS_telework.csv", row.names = FALSE)
+# save(merged_data, file = "CPS_telework.RData")
+save(merged_data, file = "CPS_telework_ASEC.RData")
+
+# write.csv(merged_data, file = "CPS_telework.csv", row.names = FALSE)
+write.csv(merged_data, file = "CPS_telework_ASEC.csv", row.names = FALSE)
