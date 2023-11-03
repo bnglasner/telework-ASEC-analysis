@@ -9,6 +9,7 @@
 library(dplyr)
 library(readxl)
 library(ggplot2)
+library(plotly)
 library(ipumsr)
 library(fixest)
 # https://cran.r-project.org/web/packages/fixest/vignettes/fixest_walkthrough.html#13_Other_standard-errors
@@ -127,7 +128,7 @@ baseline_feols <- function(dependent_variable, independent_variable_bin) {
 }
 
 ind_info_feols <- function(dependent_variable, independent_variable_bin) {
-  feols(as.formula(paste(dependent_variable, "~", independent_variable_bin, "| occ + ind + race + marst + citizen")), 
+  feols(as.formula(paste(dependent_variable, "~", independent_variable_bin, "| occ + ind + race + sex + marst + educ")), 
         data = merged_data,
         weights = wtfinl[wtfinl > 0])
 }
@@ -169,9 +170,9 @@ etable(any_baseline_models[[binary_difficulty_vars[1]]], any_indinfo_models[[bin
 ###########################
 
 # Step 1: Extract Coefficients and Confidence Intervals
-outcome_list <- c("Deaf/Serious Diff. Hearing", "Blind /Serious Diff. Seeing", 
-                  "Cognitive Diff.", "Diff. Walking/Climbing Stairs", 
-                  "Diff./Impossible for Activities Outside the Home Alone", "Diff. to take Care for Pers. Needs", 
+outcome_list <- c("Deaf/Diff. Hearing", "Blind /Diff. Seeing", 
+                  "Cognitive Diff.", "Diff. Walking/Stairs", 
+                  "Diff. Activities Outside the Home", "Diff. Personal Needs", 
                   "Any Difficulty")
 
 
@@ -185,6 +186,14 @@ for(i in seq_along(any_baseline_models)){
                             "Fully - Baseline","Fully - Extended",
                             "Hybrid - Baseline","Hybrid - Extended" 
   )
+  plot_data[[i]]$reg <- c("Baseline","Extended",
+                            "Baseline","Extended",
+                            "Baseline","Extended" 
+  )
+  plot_data[[i]]$type <- c("Any Remote","Any Remote",
+                            "Fully Remote","Fully Remote",
+                            "Hybrid Remote","Hybrid Remote" 
+  )
   plot_data[[i]]$dependent <- c(outcome_list[[i]],outcome_list[[i]],outcome_list[[i]],
                                 outcome_list[[i]],outcome_list[[i]],outcome_list[[i]])
   
@@ -193,37 +202,119 @@ for(i in seq_along(any_baseline_models)){
 all_results <- bind_rows(plot_data)
 
 all_results$dependent <- factor(all_results$dependent,
-                                levels = c("Deaf/Serious Diff. Hearing", "Blind /Serious Diff. Seeing", 
-                                           "Cognitive Diff.", "Diff. Walking/Climbing Stairs", 
-                                           "Diff./Impossible for Activities Outside the Home Alone", "Diff. to take Care for Pers. Needs", 
+                                levels = c("Deaf/Diff. Hearing", "Blind /Diff. Seeing", 
+                                           "Cognitive Diff.", "Diff. Walking/Stairs", 
+                                           "Diff. Activities Outside the Home", "Diff. Personal Needs", 
                                            "Any Difficulty"))
 
 all_results <- all_results %>%
+  # filter(type != "Any") %>%
   arrange(dependent,model) %>%
   mutate(row_num = row_number(),
          conf.low = Estimate - 1.96*Std..Error,
-         conf.high = Estimate + 1.96*Std..Error)
+         conf.high = Estimate + 1.96*Std..Error) 
 
-# Step 2: Create the Plot
-P <- ggplot(all_results, 
-       aes(x = row_num, 
-           y = Estimate, 
-           ymin = conf.low, 
-           ymax = conf.high, 
-           color = dependent,
-           shape = model)) +
-  geom_hline(yintercept = 0) +
-  geom_pointrange() +
-  # facet_wrap(~ model_type, scales = "free_y") +
-  theme_minimal() +
-  labs(x = "Independent Variable",
-       y = "Coefficient Estimate",
-       color = "Dependent Variable",
-       shape = "Model Type",
-       title = "The effect of Disabilities on Propensity to Telework",
-       subtitle = "Coefficient Estimates with 95% Confidence Intervals") +
-  theme(axis.text.x = element_blank())
+midpoints <- tapply(all_results$row_num, all_results$dependent, 
+                    function(x) mean(range(x)))
+ticktext <- unique(all_results$dependent)
 
-png(filename = "Dis. Effect by Type.png", height =800, width = 1600)
-plot(P)
-dev.off()
+P <- plot_ly(all_results, 
+             x = ~row_num, 
+             y = ~Estimate, 
+             text = ~paste("Model Type:", model, 
+                           "<br>Dependent Variable Type:", dependent,
+                           "<br>Effect Size:", round(Estimate,3),
+                           "<br>t-value:", round(t.value,3)),  # Custom hover text
+             hoverinfo = 'text',  # Display only the custom text
+             error_y = ~list(array = conf.high - Estimate,
+                             arrayminus = Estimate - conf.low),
+             type = 'scatter',
+             mode = 'markers',
+             symbol = ~reg,
+             color = ~type ) %>%
+  layout(title = "The effect of Disabilities on Propensity to Telework",
+         xaxis = list(title = "",
+                      tickmode = "array",
+                      tickvals = midpoints,
+                      ticktext = ticktext),
+         yaxis = list(title = "Coefficient Estimate"),
+         legend = list(title = list(text = 'Dependent Variable'))
+  ) 
+
+P <- P %>%
+  layout(shapes = list(
+    list(
+      type = 'line',
+      line = list(
+        color = 'grey',
+        width = 2,
+        dash = 'dash'
+      ),
+      x0 = 6.5,
+      x1 = 6.5,
+      y0 = min(all_results$conf.low),  # Replace with the minimum y-value you want the line to start at
+      y1 = max(all_results$conf.high)  # Replace with the maximum y-value you want the line to end at
+    ),
+    list(
+      type = 'line',
+      line = list(
+        color = 'grey',
+        width = 2,
+        dash = 'dash'
+      ),
+      x0 = 12.5,
+      x1 = 12.5,
+      y0 = min(all_results$conf.low),  # Replace with the minimum y-value you want the line to start at
+      y1 = max(all_results$conf.high)  # Replace with the maximum y-value you want the line to end at
+    ),
+    list(
+      type = 'line',
+      line = list(
+        color = 'grey',
+        width = 2,
+        dash = 'dash'
+      ),
+      x0 = 18.5,
+      x1 = 18.5,
+      y0 = min(all_results$conf.low),  # Replace with the minimum y-value you want the line to start at
+      y1 = max(all_results$conf.high)  # Replace with the maximum y-value you want the line to end at
+    ),
+    list(
+      type = 'line',
+      line = list(
+        color = 'grey',
+        width = 2,
+        dash = 'dash'
+      ),
+      x0 = 24.5,
+      x1 = 24.5,
+      y0 = min(all_results$conf.low),  # Replace with the minimum y-value you want the line to start at
+      y1 = max(all_results$conf.high)  # Replace with the maximum y-value you want the line to end at
+    ),
+    list(
+      type = 'line',
+      line = list(
+        color = 'grey',
+        width = 2,
+        dash = 'dash'
+      ),
+      x0 = 30.5,
+      x1 = 30.5,
+      y0 = min(all_results$conf.low),  # Replace with the minimum y-value you want the line to start at
+      y1 = max(all_results$conf.high)  # Replace with the maximum y-value you want the line to end at
+    ),
+    list(
+      type = 'line',
+      line = list(
+        color = 'grey',
+        width = 2,
+        dash = 'dash'
+      ),
+      x0 = 36.5,
+      x1 = 36.5,
+      y0 = min(all_results$conf.low),  # Replace with the minimum y-value you want the line to start at
+      y1 = max(all_results$conf.high)  # Replace with the maximum y-value you want the line to end at
+    )
+  )) 
+P
+
