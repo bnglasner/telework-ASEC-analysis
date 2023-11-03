@@ -122,13 +122,13 @@ wtfinl <- merged_data$wtfinl
 
 # Define a custom function to run feols with given dependent variable
 baseline_feols <- function(dependent_variable, independent_variable_bin) {
-  feols(as.formula(paste(dependent_variable, "~", independent_variable_bin, "| occ + ind")), 
+  feols(as.formula(paste(dependent_variable, "~", independent_variable_bin, "| occ2010 + ind1990")), 
         data = merged_data,
         weights = wtfinl[wtfinl > 0])
 }
 
 ind_info_feols <- function(dependent_variable, independent_variable_bin) {
-  feols(as.formula(paste(dependent_variable, "~", independent_variable_bin, "| occ + ind + race + sex + marst + educ")), 
+  feols(as.formula(paste(dependent_variable, "~", independent_variable_bin, "| occ2010 + ind1990 + race + sex + marst + educ")), 
         data = merged_data,
         weights = wtfinl[wtfinl > 0])
 }
