@@ -168,6 +168,7 @@ etable(any_baseline_models[[binary_difficulty_vars[1]]], any_indinfo_models[[bin
 ###########################
 ### Visual     Analysis ###
 ###########################
+setwd(path_output)
 
 # Step 1: Extract Coefficients and Confidence Intervals
 outcome_list <- c("Deaf/Diff. Hearing", "Blind /Diff. Seeing", 
@@ -214,6 +215,7 @@ all_results <- all_results %>%
          conf.low = Estimate - 1.96*Std..Error,
          conf.high = Estimate + 1.96*Std..Error) 
 
+startpoints <- c(1,7,14,21,28,35,42)
 midpoints <- tapply(all_results$row_num, all_results$dependent, 
                     function(x) mean(range(x)))
 ticktext <- unique(all_results$dependent)
@@ -318,3 +320,8 @@ P <- P %>%
   )) 
 P
 
+htmlwidgets::saveWidget(
+  widget = P, #the plotly object
+  file = "Dis. Effect by Type.html", #the path & file name
+  selfcontained = TRUE #creates a single html file
+)
