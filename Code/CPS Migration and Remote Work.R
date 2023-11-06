@@ -120,8 +120,10 @@ analysis_data %>%
 analysis_data %>%
   # group_by(moved) %>%
   # group_by(moved_in_county) %>%
-  group_by(moved_out_county) %>%
-  summarise(count = n())
+  # group_by(moved_out_county) %>%
+  summarise(
+    # count = n(),
+    avg = weighted.mean(moved_out_county, asecwt))
 
 # analysis_data <- merged_data %>%
 #   left_join(telework_hh) %>%
