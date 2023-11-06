@@ -98,6 +98,7 @@ df = merged_data %>%
 fully_remote <- ranger(fully_remote ~ educ + male + race + age + disability + ind1990 + occ2010, 
                        data = df, 
                        case.weights = "wtfinl",
+                       num.trees = 5000,
                        # classification = TRUE,
                        importance = 'permutation',
                        scale.permutation.importance = TRUE,
