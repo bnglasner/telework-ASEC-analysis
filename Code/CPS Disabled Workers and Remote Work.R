@@ -112,6 +112,10 @@ merged_data <- merged_data %>%
   filter(age>=22 & age<=64)
 
 
+merged_data %>%
+  group_by(date,diffany) %>%
+  summarise(fully_remote_share = weighted.mean(fully_remote, w = wtfinl, rm.na = TRUE))
+
 # Convert difficulty variables to binary format within the merged_data dataset
 binary_difficulty_vars <- c("diffhear", "diffeye", "diffrem", "diffphys", "diffmob", "diffcare", "diffany")
 for (var in binary_difficulty_vars) {
@@ -125,13 +129,17 @@ wtfinl <- merged_data$wtfinl
 baseline_feols <- function(dependent_variable, independent_variable_bin) {
   feols(as.formula(paste(dependent_variable, "~", independent_variable_bin, "| occ2010 + ind1990")), 
         data = merged_data,
-        weights = wtfinl[wtfinl > 0])
+        se = "cluster",
+        cluster = c("occ2010","ind1990"),
+        weights = wtfinl)
 }
 
 ind_info_feols <- function(dependent_variable, independent_variable_bin) {
   feols(as.formula(paste(dependent_variable, "~", independent_variable_bin, "| occ2010 + ind1990 + race + sex + marst + educ + nchild + age")), 
         data = merged_data,
-        weights = wtfinl[wtfinl > 0])
+        se = "cluster",
+        cluster = c("occ2010","ind1990"),
+        weights = wtfinl)
 }
 
 # Initialize lists to store models
@@ -156,10 +164,10 @@ for (diff_var in binary_difficulty_vars) {
 }
 
 # Use etable to display results from the first variable as an example
-etable(any_baseline_models[[binary_difficulty_vars[1]]], any_indinfo_models[[binary_difficulty_vars[1]]],
-       fully_baseline_models[[binary_difficulty_vars[1]]], fully_indinfo_models[[binary_difficulty_vars[1]]],
-       hybrid_baseline_models[[binary_difficulty_vars[1]]], hybrid_indinfo_models[[binary_difficulty_vars[1]]],
-       vcov = "twoway", 
+result_table <- etable(any_baseline_models[[binary_difficulty_vars[7]]], any_indinfo_models[[binary_difficulty_vars[7]]],
+       fully_baseline_models[[binary_difficulty_vars[7]]], fully_indinfo_models[[binary_difficulty_vars[7]]],
+       hybrid_baseline_models[[binary_difficulty_vars[7]]], hybrid_indinfo_models[[binary_difficulty_vars[7]]],
+       cluster = c("occ2010","ind1990"), 
        headers = c("Any - Baseline","Any - Extended",
                    "Fully - Baseline","Fully - Extended",
                    "Hybrid - Baseline","Hybrid - Extended" 
@@ -181,9 +189,9 @@ outcome_list <- c("Deaf/Diff. Hearing", "Blind /Diff. Seeing",
 plot_data <- list()
 
 for(i in seq_along(any_baseline_models)){
-  plot_data[[i]] <- as.data.frame(c(bind_rows(any_baseline_models[[i]]$coeftable, any_indinfo_models[[i]]$coeftable,
-                              fully_baseline_models[[i]]$coeftable, fully_indinfo_models[[i]]$coeftable,
-                              hybrid_baseline_models[[i]]$coeftable, hybrid_indinfo_models[[i]]$coeftable)))
+  plot_data[[i]] <- bind_rows(as.data.frame(any_baseline_models[[i]]$coeftable), as.data.frame(any_indinfo_models[[i]]$coeftable),
+                              as.data.frame(fully_baseline_models[[i]]$coeftable), as.data.frame(fully_indinfo_models[[i]]$coeftable),
+                              as.data.frame(hybrid_baseline_models[[i]]$coeftable), as.data.frame(hybrid_indinfo_models[[i]]$coeftable))
   plot_data[[i]]$model <- c("Any - Baseline","Any - Extended",
                             "Fully - Baseline","Fully - Extended",
                             "Hybrid - Baseline","Hybrid - Extended" 
@@ -213,8 +221,8 @@ all_results <- all_results %>%
   filter(type != "Any Remote") %>%
   arrange(dependent,model) %>%
   mutate(row_num = row_number(),
-         conf.low = Estimate - 1.96*Std..Error,
-         conf.high = Estimate + 1.96*Std..Error) 
+         conf.low = Estimate - 1.96*`Std. Error`,
+         conf.high = Estimate + 1.96*`Std. Error`) 
 
 # startpoints <- c(1,7,14,21,28,35,42)
 midpoints <- tapply(all_results$row_num, all_results$dependent, 
@@ -227,7 +235,7 @@ P <- plot_ly(all_results,
              text = ~paste("Model Type:", model, 
                            "<br>Dependent Variable Type:", dependent,
                            "<br>Effect Size:", round(Estimate,3),
-                           "<br>t-value:", round(t.value,3)),  # Custom hover text
+                           "<br>t-value:", round(`t value`,3)),  # Custom hover text
              hoverinfo = 'text',  # Display only the custom text
              error_y = ~list(array = conf.high - Estimate,
                              arrayminus = Estimate - conf.low),
