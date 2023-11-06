@@ -148,12 +148,16 @@ asecwth <- analysis_data$asecwt
 baseline_feols <- function(dependent_variable, independent_variable_bin) {
   feols(as.formula(paste(dependent_variable, "~", independent_variable_bin, "| occ2010 + ind1990")), 
         data = analysis_data,
+        se = "cluster",
+        cluster = c("serial"),
         weights = asecwth[asecwth > 0])
 }
 
 ind_info_feols <- function(dependent_variable, independent_variable_bin) {
   feols(as.formula(paste(dependent_variable, "~", independent_variable_bin, "| occ2010 + ind1990 + race + sex + marst + educ + nchild + age")), 
         data = analysis_data,
+        se = "cluster",
+        cluster = c("serial"),
         weights = asecwth[asecwth > 0])
 }
 
@@ -179,17 +183,17 @@ for (diff_var in binary_moving_vars) {
 }
 
 # Use etable to display results from the first variable as an example
-etable(any_baseline_models[[binary_moving_vars[1]]], any_indinfo_models[[binary_moving_vars[1]]],
+result_table <- etable(any_baseline_models[[binary_moving_vars[1]]], any_indinfo_models[[binary_moving_vars[1]]],
        in_county_baseline_models[[binary_moving_vars[1]]], in_county_indinfo_models[[binary_moving_vars[1]]],
        out_county_baseline_models[[binary_moving_vars[1]]], out_county_indinfo_models[[binary_moving_vars[1]]],
-       # vcov = "twoway",
-       # vcov = "standard",
-       vcov = ~serial,
-       # vcov = ~ind1990,
+       # se = "cluster",
+       # cluster = c("serial"),
        headers = c("Moved - Baseline","Moved - Extended",
                    "Within County - Baseline","Within County - Extended",
                    "Out of County - Baseline","Out of County - Extended" 
-                   ))
+                   ),
+       tex = FALSE
+       )
 
 ###########################
 ### Visual     Analysis ###
@@ -197,9 +201,13 @@ etable(any_baseline_models[[binary_moving_vars[1]]], any_indinfo_models[[binary_
 setwd(path_output)
 
 # Step 1: Extract Coefficients and Confidence Intervals
-all_results <- as.data.frame(c(bind_rows(any_baseline_models[[1]]$coeftable[1:2,], any_indinfo_models[[1]]$coeftable[1:2,],
-                              in_county_baseline_models[[1]]$coeftable[1:2,], in_county_indinfo_models[[1]]$coeftable[1:2,],
-                              out_county_baseline_models[[1]]$coeftable[1:2,], out_county_indinfo_models[[1]]$coeftable[1:2,])))
+all_results <- bind_rows(as.data.frame(any_baseline_models[[1]]$coeftable[1:2,]), as.data.frame(any_indinfo_models[[1]]$coeftable[1:2,]),
+                         as.data.frame(in_county_baseline_models[[1]]$coeftable[1:2,]), as.data.frame(in_county_indinfo_models[[1]]$coeftable[1:2,]),
+                         as.data.frame(out_county_baseline_models[[1]]$coeftable[1:2,]), as.data.frame(out_county_indinfo_models[[1]]$coeftable[1:2,]))
+
+
+
+
 all_results$household_type <- c("Partially Remote","Fully Remote",
                                 "Partially Remote","Fully Remote",
                                 "Partially Remote","Fully Remote",
@@ -234,8 +242,8 @@ all_results <- all_results %>%
   # filter(type != "Any") %>%
   arrange(type,household_type) %>%
   mutate(row_num = row_number(),
-         conf.low = Estimate - 1.96*Std..Error,
-         conf.high = Estimate + 1.96*Std..Error) 
+         conf.low = Estimate - 1.96*`Std. Error`,
+         conf.high = Estimate + 1.96*`Std. Error`) 
 
 # startpoints <- c(1,5,9)
 midpoints <- tapply(all_results$row_num, all_results$type, 
@@ -248,7 +256,7 @@ P <- plot_ly(all_results,
              text = ~paste("Model Type:", model, 
                            "<br>Household Type:", household_type,
                            "<br>Effect Size:", round(Estimate,3),
-                           "<br>t-value:", round(t.value,3)),  # Custom hover text
+                           "<br>t-value:", round(`t value`,3)),  # Custom hover text
              hoverinfo = 'text',  # Display only the custom text
              error_y = ~list(array = conf.high - Estimate,
                              arrayminus = Estimate - conf.low),
@@ -299,3 +307,4 @@ htmlwidgets::saveWidget(
   file = "Remote Work Effect by Moves.html", #the path & file name
   selfcontained = TRUE #creates a single html file
 )
+
