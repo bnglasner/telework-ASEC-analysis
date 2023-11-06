@@ -133,6 +133,7 @@ ranger::importance(fully_remote)
 hybrid_remote <- ranger(hybrid_remote ~ educ + male + race + age + disability + ind1990 + occ2010, 
                        data = df, 
                        case.weights = "wtfinl",
+                       num.trees = 5000,
                        # classification = TRUE,
                        importance = 'permutation',
                        scale.permutation.importance = TRUE,
