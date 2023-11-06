@@ -95,74 +95,68 @@ df = merged_data %>%
 # fully_remote = feols(fully_remote ~ college + male + white + black + asian + age + age_sq | occ2010 + ind1990, subset(df,wtfinl>0), weights = df$wtfinl[df$wtfinl>0])
 # hybrid_remote = feols(hybrid_remote ~ college + male + white + black + asian + age + age_sq | occ2010 + ind1990, subset(df,wtfinl>0), weights = df$wtfinl[df$wtfinl>0])
 
-fully_remote <- ranger(fully_remote ~ educ + male + race + age + disability + ind1990 + occ2010, 
-                       data = df, 
-                       case.weights = "wtfinl",
-                       num.trees = 5000,
-                       # classification = TRUE,
-                       importance = 'permutation',
-                       scale.permutation.importance = TRUE,
-                       respect.unordered.factors=TRUE,
-                       write.forest = TRUE,
-                       verbose = TRUE,
-                       mtry = 3)
-print(fully_remote)
-p.remote <- predict(fully_remote, data=df)
-str(p.remote)
-summary(df$fully_remote - p.remote$predictions) 
+# Function to train a ranger model
+train_ranger_model <- function(target, df) {
+  formula_str <- paste0(target, " ~ educ + male + race + age + disability + ind1990 + occ2010")
+  model <- ranger(
+    formula = as.formula(formula_str),
+    data = df,
+    # You can select either probability, classification, or neither.
+    # probability = TRUE, 
+    # classification = TRUE,
+    case.weights = df$wtfinl,
+    num.trees = 500,
+    importance = 'permutation',
+    scale.permutation.importance = TRUE,
+    respect.unordered.factors = TRUE,
+    write.forest = TRUE,
+    verbose = TRUE,
+    mtry = 3
+  )
+  return(model)
+}
 
-df$fully_remote_prediction_noedit <- p.remote$predictions
+# Function to make predictions using a trained ranger model
+make_predictions <- function(model, df) {
+  predictions <- predict(model, data = df)$predictions
+  return(predictions)
+}
 
-# If you use the classification =TRUE, then test accuracy across bins of prediction 
-df <- df %>% mutate(
-  fully_remote_prediction = case_when(
-    fully_remote_prediction_noedit<0.5 ~ 0,
-    fully_remote_prediction_noedit>=0.5 ~1,
-    TRUE ~ NA
-  ),
-  fully_remote_prediction_type = case_when(
-  fully_remote == 0 & fully_remote_prediction == 0 ~ "Correctly Predict Non-Remote",
-  fully_remote == 1 & fully_remote_prediction == 1 ~ "Correctly Predict Remote",
-  fully_remote == 1 & fully_remote_prediction == 0 ~ "Failed to Predict Remote",
-  fully_remote == 0 & fully_remote_prediction == 1 ~ "Failed to Predict Non-Remote",
-  TRUE ~ "Missing"
-))
-table(df$fully_remote_prediction_type)
-ranger::importance(fully_remote)
-#####
-
-hybrid_remote <- ranger(hybrid_remote ~ educ + male + race + age + disability + ind1990 + occ2010, 
-                       data = df, 
-                       case.weights = "wtfinl",
-                       num.trees = 5000,
-                       # classification = TRUE,
-                       importance = 'permutation',
-                       scale.permutation.importance = TRUE,
-                       respect.unordered.factors=TRUE,
-                       write.forest = TRUE,
-                       verbose = TRUE,
-                       mtry = 3)
-print(hybrid_remote)
-p.remote <- predict(hybrid_remote, data=df)
-str(p.remote)
-summary(df$hybrid_remote - p.remote$predictions) 
-
-df$hybrid_remote_prediction_noedit <- p.remote$predictions
-
-# If you use the classification =TRUE, then test accuracy across bins of prediction 
-df <- df %>% mutate(
-  hybrid_remote_prediction = case_when(
-    hybrid_remote_prediction_noedit<0.5 ~ 0,
-    hybrid_remote_prediction_noedit>=0.5 ~1,
-    TRUE ~ NA
-  ),
-  hybrid_remote_prediction_type = case_when(
-    hybrid_remote == 0 & hybrid_remote_prediction == 0 ~ "Correctly Predict Non-Hybrid",
-    hybrid_remote == 1 & hybrid_remote_prediction == 1 ~ "Correctly Predict Hybrid",
-    hybrid_remote == 1 & hybrid_remote_prediction == 0 ~ "Failed to Predict Hybrid",
-    hybrid_remote == 0 & hybrid_remote_prediction == 1 ~ "Failed to Predict Non-Hybrid",
+# Function to categorize predictions
+categorize_predictions <- function(predictions, actual, prefix) {
+  prediction_type <- case_when(
+    actual == 0 & predictions < 0.5 ~ paste("Correctly Predict Non-", prefix, sep=""),
+    actual == 1 & predictions >= 0.5 ~ paste("Correctly Predict ", prefix, sep=""),
+    actual == 1 & predictions < 0.5 ~ paste("Failed to Predict ", prefix, sep=""),
+    actual == 0 & predictions >= 0.5 ~ paste("Failed to Predict Non-", prefix, sep=""),
     TRUE ~ "Missing"
-  ))
-table(df$hybrid_remote_prediction_type)
-ranger::importance(hybrid_remote)
+  )
+  return(prediction_type)
+}
 
+# Need to run the following functions within each outcome of interest:
+
+# Define a list of outcome-label pairs
+outcomes_and_labels <- list(
+  c('fully_remote', "Remote"),
+  c('hybrid_remote', "Hybrid")
+)
+
+# Loop through each pair to train the model, make predictions, categorize them, and view the tables
+for (pair in outcomes_and_labels) {
+  outcome_variable <- pair[1]
+  label <- pair[2]
+  
+  # Train the model
+  model <- train_ranger_model(outcome_variable, df)
+  
+  # Make predictions
+  predictions <- make_predictions(model, df)
+  
+  # Categorize predictions
+  prediction_type_column <- paste0(outcome_variable, "_prediction_type")
+  df[[prediction_type_column]] <- categorize_predictions(predictions, df[[outcome_variable]], label)
+  
+  # View the tables of categorized predictions
+  print(table(df[[prediction_type_column]]))
+}
