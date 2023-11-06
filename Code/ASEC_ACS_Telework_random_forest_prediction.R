@@ -14,8 +14,6 @@
 #    predictions
 # 5. Run regression looking at effect of telework on home values 
 
-
-
 # Preliminaries
 rm(list = ls())           # Clears workspace, be careful about hidden dependencies
 
@@ -102,8 +100,8 @@ train_ranger_model <- function(target, df) {
     formula = as.formula(formula_str),
     data = df,
     # You can select either probability, classification, or neither.
-    # probability = TRUE, 
-    # classification = TRUE,
+    probability = TRUE, # This might be a better approach than just the proportion within each bin
+    # classification = TRUE, # This will likely underestimate the number of remote workers - since they are still the minority share across most category bins
     case.weights = df$wtfinl,
     num.trees = 500,
     importance = 'permutation',
@@ -137,6 +135,7 @@ categorize_predictions <- function(predictions, actual, prefix) {
 # Need to run the following functions within each outcome of interest:
 
 # Define a list of outcome-label pairs
+# First element is the outcome variable and second is the label to use
 outcomes_and_labels <- list(
   c('fully_remote', "Remote"),
   c('hybrid_remote', "Hybrid")
