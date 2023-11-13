@@ -242,7 +242,9 @@ P <- plot_ly(all_results,
              type = 'scatter',
              mode = 'markers',
              symbol = ~reg,
-             color = ~type ) %>%
+             color = ~type,
+             marker = list(size = 10)
+             ) %>%
   layout(title = "The effect of Disabilities on Propensity to Telework",
          xaxis = list(title = "",
                       tickmode = "array",
