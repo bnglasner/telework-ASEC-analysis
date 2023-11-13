@@ -265,7 +265,8 @@ P <- plot_ly(all_results,
              type = 'scatter',
              mode = 'markers',
              symbol = ~reg,
-             color = ~household_type ) %>%
+             color = ~household_type,
+             marker = list(size = 10)) %>%
   layout(title = "The effect of Remote Work on Propensity to Move",
          xaxis = list(title = "",
                       tickmode = "array",
