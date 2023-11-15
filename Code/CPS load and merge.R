@@ -18,9 +18,8 @@ library(ggplot2)
 #################
 
 # Define user-specific root folders
-root_folders <- c("bglasner" = "C:/Users/bglasner/Dropbox/GitHub",
-                  "bngla" = "C:/Users/bngla/Dropbox/GitHub",
-                  "Benjamin Glasner" = "C:/Users/Benjamin Glasner/Dropbox/GitHub")
+# C:/Users/...
+root_folders <- c()
 
 # Get current user
 current_user <- Sys.info()[["user"]]
