@@ -82,7 +82,8 @@ merged_data = merged_data %>%
     race = as.factor(race),
     educ = as.factor(educ),
     ind1990 = as.factor(ind1990),
-    occ2010 = as.factor(occ2010)
+    occ2010 = as.factor(occ2010),
+    age_sq = age^2
   )
 
 
@@ -91,6 +92,132 @@ merged_data = merged_data %>%
 df = merged_data %>%
   filter(age >= 22 & age <= 64)
 
+
+# Compare out of sample fit between RF and FEOLS models using 80/20 split
+# RF parameters
+n_trees = 201
+mtry_para = 3
+
+train_size = floor(nrow(df)*0.80)
+idx = sample(1:nrow(df), train_size)
+df_train = df[idx,]
+df_test = df[-idx,]
+
+
+# Fully remote
+# RF model on training data
+fully_remote_rf = ranger(
+  fully_remote ~ educ + male + race + age + disability + ind1990 + occ2010, 
+  data = df_train, 
+  case.weights = "wtfinl",
+  num.trees = n_trees,
+  classification = FALSE,
+  importance = 'permutation',
+  scale.permutation.importance = TRUE,
+  respect.unordered.factors=TRUE,
+  write.forest = TRUE,
+  verbose = TRUE,
+  mtry = mtry_para)
+
+# FEOLS model on training data 
+fully_remote_ols = feols(fully_remote ~ college + male + white + black + asian + age + age_sq | occ2010 + ind1990, subset(df_test,wtfinl>0), weights = df_test$wtfinl[df_test$wtfinl>0])
+
+
+
+
+# Predict using testing set
+fully_remote_pred_rf = predict(fully_remote_rf, data = df_test)
+fully_remote_pred_ols = predict(fully_remote_ols, newdata = df_test)
+
+
+df_check = data.frame(
+  serial = df_test$serial, 
+  pernum = df_test$pernum, 
+  month = df_test$month, 
+  year = df_test$year, 
+  fully_remote = df_test$fully_remote, 
+  fully_remote_pred_rf,
+  fully_remote_pred_ols)
+
+
+
+
+df_check_rf %>%
+  mutate(
+    fully_remote_guess_rf = as.numeric(prediction > 0.50),
+    fully_remote_guess_ols = as.numeric(fully_remote_pred_ols > 0.50),
+    correct_rf = as.numeric(fully_remote == fully_remote_guess_rf),
+    correct_ols = as.numeric(fully_remote == fully_remote_guess_ols)
+  ) %>%
+  summarise(n_correct_rf = sum(correct_rf),
+            n_correct_ols = sum(correct_ols),
+            n_total = n()) %>%
+  mutate(error_rf = 100*(1 - n_correct_rf/n_total),
+         error_ols = 100*(1 - n_correct_ols/n_total))
+  
+
+
+
+# Hybrid remote
+# RF model on training data
+hybrid_remote_rf = ranger(
+  hybrid_remote ~ educ + male + race + age + disability + ind1990 + occ2010, 
+  data = df_train, 
+  case.weights = "wtfinl",
+  num.trees = n_trees,
+  classification = FALSE,
+  importance = 'permutation',
+  scale.permutation.importance = TRUE,
+  respect.unordered.factors=TRUE,
+  write.forest = TRUE,
+  verbose = TRUE,
+  mtry = mtry_para)
+
+# FEOLS model on training data 
+hybrid_remote_ols = feols(hybrid_remote ~ college + male + white + black + asian + age + age_sq | occ2010 + ind1990, subset(df_test,wtfinl>0), weights = df_test$wtfinl[df_test$wtfinl>0])
+
+
+
+
+# Predict using testing set
+hybrid_remote_pred_rf = predict(hybrid_remote_rf, data = df_test)
+hybrid_remote_pred_ols = predict(hybrid_remote_ols, newdata = df_test)
+
+
+df_check = data.frame(
+  serial = df_test$serial, 
+  pernum = df_test$pernum, 
+  month = df_test$month, 
+  year = df_test$year, 
+  hybrid_remote = df_test$hybrid_remote, 
+  hybrid_remote_pred_rf,
+  hybrid_remote_pred_ols)
+
+
+
+
+df_check %>%
+  mutate(
+    hybrid_remote_guess_rf = as.numeric(prediction > 0.50),
+    hybrid_remote_guess_ols = as.numeric(hybrid_remote_pred_ols > 0.50),
+    correct_rf = as.numeric(hybrid_remote == hybrid_remote_guess_rf),
+    correct_ols = as.numeric(hybrid_remote == hybrid_remote_guess_ols)) %>%
+  summarise(n_correct_rf = sum(correct_rf),
+            n_correct_ols = sum(correct_ols),
+            n_total = n()) %>%
+  mutate(error_rf = 100*(1 - n_correct_rf/n_total),
+         error_ols = 100*(1 - n_correct_ols/n_total))
+
+
+
+
+
+
+
+
+
+
+# Full model
 # Fit to training data
 # Predict remote work probabilities
 fully_remote <- ranger(
@@ -132,7 +259,6 @@ any_remote <- ranger(
   write.forest = TRUE,
   verbose = TRUE,
   mtry = 3)
-
 
 
 
