@@ -1,2 +1,6 @@
 # telework-ASEC-analysis
- This folder includes the telework micro data and CPS merge code. 
+ This repository is intended to support the project "Fully vs Hybrid: the economic consequences of how we work remote" by Eric Carlson, Ben Glasner, and Adam Ozimek. We include the telework micro data, CPS merge code, and analysis code.
+
+"Remote work is consequential for the economy and for individuals, and its importance is likely to grow over time. It is tempting to look at fully remote and hybrid remote as subtle variations on one way of working, but in many cases the differences between the two can be larger than the difference between hybrid and fully in-person work. To an individual who lacks mobility, asking them to come into the office three times a week is as insurmountable as asking them to come into the office every day. At the place level, hybrid work increases the commute shed of a metro area but it still keeps individuals effectively tied to that metro area, while fully remote work can sever the connection much more fully. This has profound implications for housing demand and economic geography writ large. In this analysis we have provided empirical evidence that the effects of remote work can be contingent on whether we are talking about fully remote or hybrid remote. Future research should when possible attempt to distinguish between the two or provide an explanation for how heterogeneous impacts are otherwise accounted for."
+
+ Please reach out with any questions.
