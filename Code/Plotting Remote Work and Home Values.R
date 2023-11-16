@@ -11,10 +11,9 @@ theme_set(theme_bw())
 
 
 # Define user-specific root folders
-root_folders <- c("bglasner" = "C:/Users/bglasner/Dropbox/GitHub",
-                  "bngla" = "C:/Users/bngla/Dropbox/GitHub",
-                  "Benjamin Glasner" = "C:/Users/Benjamin Glasner/Dropbox/GitHub",
-                  "ericcarlson" = "/Users/ericcarlson/Dropbox/github")
+# C:/Users/...
+root_folders <- c()
+
 
 
 # Get current user
