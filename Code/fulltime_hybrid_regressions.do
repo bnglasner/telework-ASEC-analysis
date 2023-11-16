@@ -2,8 +2,8 @@ clear
 set more off
 
 
-global data_path = "/Users/ericcarlson/Dropbox/github/telework-ASEC-analysis/Data"
-global output_path = "/Users/ericcarlson/Dropbox/github/telework-ASEC-analysis/Output"
+global data_path = ""
+global output_path = ""
 
 
 * Open data set
